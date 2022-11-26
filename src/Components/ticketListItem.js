@@ -22,6 +22,13 @@ const TicketListItem = ({ ticket }) => {
   const navigation = useNavigation();
   const toast = useRef(null);
 
+  function isInTheFuture(date) {
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    return date > today;
+  }
   return (
     <Pressable
       style={tw.style(
@@ -46,13 +53,13 @@ const TicketListItem = ({ ticket }) => {
         <View className="w-full flex flex-row p-2">
           <Icon name="calendar" size={20} color="#4577a9" />
           <Text className="text-sm text-blue-600 ml-2">
-            {ticket.purchaseDate}
+            {ticket.dateOfPurchase}
           </Text>
         </View>
       </View>
       <View className="w-3/5 bg-white rounded-md flex flex-col p-2">
         <Text className="text-xl font-bold text-slate-600 text-left">
-          {ticket.name}
+          {ticket.buyerName}
         </Text>
         <View className="w-full flex flex-row py-2 justify-between">
           <View className="flex flex-row">
@@ -63,7 +70,7 @@ const TicketListItem = ({ ticket }) => {
             />
             <Pressable
               onPress={async () => {
-                await Clipboard.setStringAsync(ticket.ticketId);
+                await Clipboard.setStringAsync(ticket.id.toString());
                 toast.current.show("ID Copied", {
                   icon: <Icon name="content-copy" size={20} color="white" />,
                   type: "normal",
@@ -73,12 +80,10 @@ const TicketListItem = ({ ticket }) => {
                 });
               }}
             >
-              <Text className="text-sm text-blue-600 ml-2">
-                {ticket.ticketId}
-              </Text>
+              <Text className="text-sm text-blue-600 ml-2">{ticket.id}</Text>
             </Pressable>
           </View>
-          {ticket.expired && (
+          {!isInTheFuture(new Date(ticket.date)) && (
             <Badge
               label="Expired"
               labelStyle={tw.style("text-white")}
