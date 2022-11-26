@@ -42,6 +42,7 @@ const EditEvent = ({ route, navigation }) => {
     "Comedy",
   ];
   const [newEvent, setNewEvent] = useState({
+    id: event.id,
     name: event.name,
     banner: event.banner,
     venue: event.venue,
@@ -222,7 +223,7 @@ const EditEvent = ({ route, navigation }) => {
                 <Text
                   style={tw.style("text-xl text-gray-500 text-center ml-2")}
                 >
-                  {newEvent.date}
+                  {newEvent.date.toString()}
                 </Text>
               </View>
             </Pressable>
@@ -278,11 +279,11 @@ const EditEvent = ({ route, navigation }) => {
             );
           })}
         </ScrollView>
-        <View className="w-full flex flex-row py-1">
+        {/* <View className="w-full flex flex-row py-1">
           <View className="w-1/2 px-1">
-            {newEvent.banner ? (
+            {image ? (
               <Image
-                source={{ uri: newEvent.banner }}
+                source={{ uri: image.uri }}
                 style={{ width: 180, height: 135 }}
               />
             ) : (
@@ -307,11 +308,11 @@ const EditEvent = ({ route, navigation }) => {
               <Text
                 style={tw.style("text-xl text-gray-500 font-bold text-center")}
               >
-                Change Banner
+                Pick Banner
               </Text>
             </Pressable>
           </View>
-        </View>
+        </View> */}
         <View className="w-full flex flex-row py-1">
           <View className="w-1/2 px-1">
             <TextInput
@@ -347,11 +348,11 @@ const EditEvent = ({ route, navigation }) => {
             label="Description"
             multiline
             numberOfLines={5}
-            value={newEvent.desc}
+            value={newEvent.description}
             onChangeText={(e) =>
               setNewEvent({
                 ...newEvent,
-                desc: e,
+                description: e,
               })
             }
             style={tw`w-full`}
@@ -359,6 +360,18 @@ const EditEvent = ({ route, navigation }) => {
           />
         </View>
       </ScrollView>
+      <Button
+        title="Confirm"
+        variant="contained"
+        color="#4577a9"
+        tintColor="white"
+        style={tw.style("w-11/12 h-15 mx-auto mb-4")}
+        titleStyle={tw`text-white text-xl font-bold my-auto`}
+        contentContainerStyle={tw.style("h-full")}
+        trailing={(props) => <Icon name="chevron-right" {...props} size={30} />}
+        onPress={onEventPost}
+        loading={addDataLoading}
+      />
       <DateTimePickerModal
         testID="dateTimePicker"
         isVisible={showDatePicker.showDate}
