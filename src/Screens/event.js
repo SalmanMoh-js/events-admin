@@ -4,7 +4,13 @@ import tw from "twrnc";
 import { ScrollView, SafeAreaView, View, Text } from "react-native";
 import { Image } from "react-native";
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
-import { Badge, IconButton, Pressable } from "@react-native-material/core";
+import {
+  Badge,
+  Button,
+  Chip,
+  IconButton,
+  Pressable,
+} from "@react-native-material/core";
 import { useNavigation } from "@react-navigation/native";
 import AntDesign from "react-native-vector-icons/AntDesign";
 import { Button as PaperButton, List } from "react-native-paper";
@@ -15,6 +21,7 @@ import EventLoadingScreen from "../Components/eventLoadingScreen";
 import Toast from "react-native-fast-toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RefreshControl } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const Event = ({ route }) => {
   const { isAuthenticated } = useSelector((state) => state.data);
@@ -24,6 +31,13 @@ const Event = ({ route }) => {
   const [event, setEvent] = useState({});
   const [errors, setErrors] = useState(null);
   const toast = useRef(null);
+  function isInTheFuture(date) {
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    return date > today;
+  }
   const viewEvent = async (id) => {
     setLoading(true);
     const config = {
@@ -35,7 +49,14 @@ const Event = ({ route }) => {
     };
     try {
       const res = await axios.get(`${URL}/api/event/${id}`, config);
-      setEvent(res.data[0]);
+      if (res.data.length) {
+        setEvent(res.data[0]);
+      } else {
+        let errs = {};
+        errs.deleted = true;
+        setErrors(errs);
+        setLoading(false);
+      }
       setLoading(false);
     } catch (err) {
       if (err.response) {
@@ -75,6 +96,23 @@ const Event = ({ route }) => {
       }, 8000);
     }
   }, [errors]);
+  useEffect(() => {
+    if (errors) {
+      if (errors.deleted) {
+        toast.current.show("Returned null. Event might've been removed", {
+          icon: <Icon name="alert-circle-outline" size={20} color="white" />,
+          placement: "bottom",
+          type: "danger",
+          duration: 5000,
+          style: { padding: 0 },
+          textStyle: { padding: 0 },
+        });
+      }
+      setTimeout(() => {
+        navigation.goBack();
+      }, 5000);
+    }
+  }, [errors]);
   return (
     <>
       <Toast ref={toast} swipeEnabled={true} />
@@ -84,7 +122,7 @@ const Event = ({ route }) => {
           eventId={eventId}
           loading={loading}
         />
-      ) : (
+      ) : event && Object.keys(event).length ? (
         <SafeAreaView className="bg-white absolute top-0 h-full w-full">
           <ScrollView
             className="w-full h-full"
@@ -92,26 +130,36 @@ const Event = ({ route }) => {
               <RefreshControl
                 refreshing={loading}
                 onRefresh={() => {
-                  viewEvent();
+                  viewEvent(eventId);
                 }}
               />
             }
           >
             <Image
               source={{
-                uri: "https://www.slntechnologies.com/wp-content/uploads/2017/08/ef3-placeholder-image.jpg",
+                uri: event.banner
+                  ? `http://app.addisway.com/public/banners/${event.banner}`
+                  : "https://www.slntechnologies.com/wp-content/uploads/2017/08/ef3-placeholder-image.jpg",
               }}
               className="w-full h-60 rounded-b-3xl"
             />
-            <View className="p-4 border-b border-gray-200">
-              <View className="flex flex-row justify-between">
-                <Text className="text-3xl font-extrabold text-gray-600">
+            <View className="p-4 border-b border-gray-200 w-full">
+              <View className="flex flex-row justify-between w-2/3">
+                <Text
+                  className={
+                    !isInTheFuture(new Date(event.date))
+                      ? "text-3xl font-extrabold text-gray-600 line-through w-full"
+                      : "text-3xl font-extrabold text-gray-600 w-full break-words"
+                  }
+                >
                   {event.name}
                 </Text>
                 <View className="flex flex-row">
                   <Badge
                     label={event.type}
-                    style={tw.style("my-auto", { backgroundColor: "#4577a9" })}
+                    style={tw.style("my-auto", {
+                      backgroundColor: "#4577a9",
+                    })}
                     labelStyle={tw.style("text-white")}
                     tintColor="#6866d4"
                   />
@@ -165,6 +213,23 @@ const Event = ({ route }) => {
                 </Text>
               </View>
             </View>
+            <ScrollView
+              style={tw`mt-2 bg-transparent w-full`}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {event.ticketTypes.split(",").map((type, index) => {
+                return (
+                  <Chip
+                    key={index}
+                    label={
+                      type + " : " + event.prices.split(",")[index] + "Br."
+                    }
+                    style={tw.style("mx-1")}
+                  />
+                );
+              })}
+            </ScrollView>
             <View className="w-full flex flex-row py-3 border-b border-gray-200">
               <View className="w-1/2 px-1">
                 <View
@@ -210,15 +275,29 @@ const Event = ({ route }) => {
               </View>
             </View>
             <View className="w-full p-4">
-              <View className="flex flex-row my-auto">
-                <Text className="text-2xl font-bold text-gray-600 mr-2 ml-4">
-                  Details
-                </Text>
-                <Icon
-                  name="alert-circle-outline"
-                  size={24}
-                  color="#4577a9"
-                  style={tw.style("my-auto")}
+              <View className="flex flex-row justify-between my-auto">
+                <View className="flex flex-row my-auto">
+                  <Text className="text-2xl font-bold text-gray-600 mr-2 ml-4">
+                    Details
+                  </Text>
+                  <Icon
+                    name="alert-circle-outline"
+                    size={24}
+                    color="#4577a9"
+                    style={tw.style("my-auto")}
+                  />
+                </View>
+                <Button
+                  variant="outlined"
+                  title="Live stream link"
+                  leading={(props) => (
+                    <Icon name="link-variant-plus" {...props} color="#268ceb" />
+                  )}
+                  onPress={() =>
+                    navigation.navigate("Set Live Stream", {
+                      event: event,
+                    })
+                  }
                 />
               </View>
               <Text className="text-lg text-gray-500 break-words m-4 text-justify">
@@ -235,7 +314,7 @@ const Event = ({ route }) => {
               )}
               onPress={() =>
                 navigation.navigate("Event Tickets", {
-                  eventId: event.id,
+                  event: event,
                 })
               }
             />
@@ -250,6 +329,12 @@ const Event = ({ route }) => {
             />
           </View>
         </SafeAreaView>
+      ) : (
+        <EventLoadingScreen
+          viewEvent={viewEvent}
+          eventId={eventId}
+          loading={loading}
+        />
       )}
     </>
   );
