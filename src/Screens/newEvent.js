@@ -1,36 +1,21 @@
-import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  SafeAreaView,
-  Alert,
-  BackHandler,
-  ImageBackground,
-  View,
-  Text,
-  StatusBar,
-  Platform,
-  ScrollView,
-  Image,
-} from "react-native";
+import { SafeAreaView, View, Text, StatusBar, ScrollView } from "react-native";
 import tw from "twrnc";
 import {
-  Surface,
   Button,
-  Badge,
   Pressable,
   TextInput,
   Chip,
 } from "@react-native-material/core";
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
-import AntDesign from "react-native-vector-icons/AntDesign";
-import Header from "../Components/Header";
-import { FAB } from "react-native-paper";
 import NewEventHeader from "../Components/newEventHeader";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { getEvents, postEvent } from "../Actions/adminActions";
-import mime from "mime";
 import { emptyErrors, resetUpdate } from "../Actions/auth";
+import Toast from "react-native-fast-toast";
+import { useRef } from "react";
 
 const NewEvent = ({ navigation }) => {
   const errors = useSelector((state) => state.errors);
@@ -38,6 +23,7 @@ const NewEvent = ({ navigation }) => {
     (state) => state.data
   );
   const dispatch = useDispatch();
+  const toast = useRef(null);
   const types = [
     "Concert",
     "Party",
@@ -51,12 +37,15 @@ const NewEvent = ({ navigation }) => {
   const [newEvent, setNewEvent] = useState({
     name: "",
     venue: "",
+    price: "",
+    livePrice: "",
     address1: "",
     address2: "",
     date: formatDate(new Date()),
     time: "",
     type: "",
-    price: "",
+    prices: "",
+    ticketTypes: "",
     noOfTickets: "",
     maxPerPerson: "",
     description: "",
@@ -65,21 +54,7 @@ const NewEvent = ({ navigation }) => {
     showDate: false,
     showTime: false,
   });
-  const [image, setImage] = useState(null);
   const [validated, setValidated] = useState(false);
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-    console.log(result);
-
-    if (!result.cancelled) {
-      setImage(result);
-    }
-  };
   function padTo2Digits(num) {
     return num.toString().padStart(2, "0");
   }
@@ -120,13 +95,9 @@ const NewEvent = ({ navigation }) => {
   };
 
   function onEventPost() {
-    // eventData.append("banner", {
-    //   name: image.fileName,
-    //   type: image.type,
-    //   uri: Platform.OS === "ios" ? image.uri.replace("file://", "") : image.uri,
-    // });
     let eventData = newEvent;
-    eventData.dateTime = new Date(eventData.data).getTime();
+    eventData.dateTime = new Date(eventData.date).getTime();
+    console.log(eventData.dateTime);
     dispatch(postEvent(eventData));
   }
   useEffect(() => {
@@ -166,25 +137,36 @@ const NewEvent = ({ navigation }) => {
       }, 5000);
     }
   }, [dataUpdated, errors]);
+  useEffect(() => {
+    setValidated(
+      Object.values(newEvent).every((value) => {
+        if (!value.toString().trim().length || value === 0) {
+          return false;
+        }
+        return true;
+      })
+    );
+  }, [newEvent]);
   return (
     <SafeAreaView style={tw.style("h-full w-full bg-white")}>
       <StatusBar animated={true} backgroundColor="#403a4aff" />
+      <Toast ref={toast} swipeEnabled={true} />
       <NewEventHeader />
       <ScrollView style={tw`mx-auto mt-4 bg-transparent w-full h-4/5 px-3`}>
-        <View className="w-full py-1">
-          <TextInput
-            label="Event Name"
-            value={newEvent.name}
-            onChangeText={(e) =>
-              setNewEvent({
-                ...newEvent,
-                name: e,
-              })
-            }
-            style={tw.style("w-full")}
-          />
-        </View>
         <View className="w-full flex flex-row py-1">
+          <View className="w-1/2 px-1">
+            <TextInput
+              label="Event Name"
+              value={newEvent.name}
+              onChangeText={(e) =>
+                setNewEvent({
+                  ...newEvent,
+                  name: e,
+                })
+              }
+              style={tw.style("w-full")}
+            />
+          </View>
           <View className="w-1/2 px-1">
             <TextInput
               label="Venue"
@@ -198,15 +180,31 @@ const NewEvent = ({ navigation }) => {
               style={tw.style("w-full")}
             />
           </View>
+        </View>
+        <View className="w-full flex flex-row py-1">
           <View className="w-1/2 px-1">
             <TextInput
-              label="Price"
+              label="Standard Price"
               keyboardType="number-pad"
               value={newEvent.price}
               onChangeText={(e) =>
                 setNewEvent({
                   ...newEvent,
                   price: e,
+                })
+              }
+              style={tw.style("w-full")}
+            />
+          </View>
+          <View className="w-1/2 px-1">
+            <TextInput
+              label="Live Stream Price"
+              keyboardType="number-pad"
+              value={newEvent.livePrice}
+              onChangeText={(e) =>
+                setNewEvent({
+                  ...newEvent,
+                  livePrice: e,
                 })
               }
               style={tw.style("w-full")}
@@ -296,7 +294,7 @@ const NewEvent = ({ navigation }) => {
           </View>
         </View>
         <ScrollView
-          style={tw`mx-auto my-4 bg-transparent w-full px-3`}
+          style={tw`mx-auto my-4 bg-transparent w-full`}
           horizontal
           showsHorizontalScrollIndicator={false}
         >
@@ -318,40 +316,6 @@ const NewEvent = ({ navigation }) => {
             );
           })}
         </ScrollView>
-        {/* <View className="w-full flex flex-row py-1">
-          <View className="w-1/2 px-1">
-            {image ? (
-              <Image
-                source={{ uri: image.uri }}
-                style={{ width: 180, height: 135 }}
-              />
-            ) : (
-              <Text className="text-base break-words opacity-50">
-                No Image Selected
-              </Text>
-            )}
-          </View>
-          <View className="w-1/2 px-1">
-            <Pressable
-              onPress={pickImage}
-              style={tw.style(
-                "flex-col p-3 border border-gray-400 rounded-3xl w-full text-center items-center justify-center"
-              )}
-            >
-              <AntDesign
-                name="picture"
-                color="#424141"
-                size={28}
-                style={tw.style("my-2")}
-              />
-              <Text
-                style={tw.style("text-xl text-gray-500 font-bold text-center")}
-              >
-                Pick Banner
-              </Text>
-            </Pressable>
-          </View>
-        </View> */}
         <View className="w-full flex flex-row py-1">
           <View className="w-1/2 px-1">
             <TextInput
@@ -398,6 +362,37 @@ const NewEvent = ({ navigation }) => {
             inputStyle={tw`rounded-xl`}
           />
         </View>
+        <View className="w-full flex flex-row py-1">
+          <View className="w-1/2 px-1">
+            <TextInput
+              label="More Ticket types"
+              value={newEvent.ticketTypes}
+              helperText="Comma separated"
+              onChangeText={(e) =>
+                setNewEvent({
+                  ...newEvent,
+                  ticketTypes: e,
+                })
+              }
+              style={tw.style("w-full")}
+            />
+          </View>
+          <View className="w-1/2 px-1">
+            <TextInput
+              label="Prices"
+              keyboardType="number-pad"
+              value={newEvent.prices}
+              helperText="Comma separated"
+              onChangeText={(e) =>
+                setNewEvent({
+                  ...newEvent,
+                  prices: e,
+                })
+              }
+              style={tw.style("w-full")}
+            />
+          </View>
+        </View>
       </ScrollView>
       <Button
         title="Confirm"
@@ -410,6 +405,11 @@ const NewEvent = ({ navigation }) => {
         trailing={(props) => <Icon name="chevron-right" {...props} size={30} />}
         onPress={onEventPost}
         loading={addDataLoading}
+        disabled={
+          !validated ||
+          (newEvent.ticketTypes.match(/,/g) || []).length !==
+            (newEvent.prices.match(/,/g) || []).length
+        }
       />
       <DateTimePickerModal
         testID="dateTimePicker"
