@@ -84,6 +84,9 @@ const HomeScreen = ({ navigation }) => {
       )
     );
   }, [searchQuery]);
+  useEffect(() => {
+    setFilteredEvents(events);
+  }, [events]);
   return (
     <SafeAreaView style={tw.style("h-full w-full bg-slate-100")}>
       <Toast ref={toast} swipeEnabled={true} />
